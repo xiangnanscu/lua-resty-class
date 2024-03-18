@@ -1,10 +1,17 @@
 # lua-resty-class
+
 Python multiple inheritance class (mro) implementation.
-# install
+
+# Install
+
 ```sh
 opm get xiangnanscu/lua-resty-class
 ```
+
+# Api
+
 # Synopsis
+
 ```lua
 local class = require("resty.class")
 local object = require("resty.object")
@@ -71,7 +78,9 @@ local Z = class 'Z' { K1, K2, K3 } {}
 pmro(Z)
 
 ```
+
 output:
+
 ```
 <instance object><class object>
 <instance A><class A>
