@@ -5,6 +5,13 @@ local type         = type
 local ipairs       = ipairs
 local setmetatable = setmetatable
 
+local function pmro(C)
+  local res = {}
+  for i, e in ipairs(C.__mro__) do
+    table.insert(res, e.__name__)
+  end
+  print(table.concat(res, ' > '))
+end
 
 local function merge(in_lists)
   if #in_lists == 0 then
@@ -76,7 +83,11 @@ local function super(cls, self)
   })
 end
 
-local function class_extends(cls, bases)
+
+---@param bases table
+---@param cls table
+---@return table
+local function class_extends(bases, cls)
   cls.__bases__ = { unpack(bases) }
   cls.__mro__ = c3_mro(cls)
   cls.__index = cls
@@ -84,7 +95,7 @@ local function class_extends(cls, bases)
   cls.__call = object.__call
   cls.new = object.new
   cls.init = object.init
-  function cls.super(self, cls)
+  function cls.super(self)
     return super(cls, self)
   end
 
@@ -100,37 +111,29 @@ local function class_extends(cls, bases)
       end
     end
   }
-  return setmetatable(cls, meta), meta
+  return setmetatable(cls, meta)
 end
 
-local function class(bases)
-  if bases == nil then
-    return class_extends({}, { object })
-  elseif type(bases) == 'string' then
-    return function(a)
-      if a == nil then
-        return class_extends({ __name__ = bases }, { object })
-      elseif type(a) ~= 'table' then
-        error("invalid type for class continuation: " .. type(a))
-      elseif #a == 0 then
-        a.__name__ = bases
-        return class_extends(a, { object })
-      else
-        return function(b)
-          b = b or {}
-          b.__name__ = bases
-          return class_extends(b, a)
-        end
+local function class(a)
+  if a == nil then
+    -- local A = Class()
+    return class_extends({ object }, {})
+  end
+  -- local A = Class 'A'
+  if type(a) == 'string' then
+    return class_extends({ object }, { __name__ = a })
+  elseif type(a) == 'table' then
+    if #a == 0 then
+      -- local A = Class {foo = function(self) end}
+      return class_extends({ object }, a)
+    else
+      -- local C = Class {A, B} {foo = function(self) end}
+      return function(cls)
+        return class_extends(a, cls)
       end
     end
-  elseif type(bases) ~= 'table' then
-    error("invalid type for class: " .. type(bases))
-  elseif #bases == 0 then
-    return class_extends(bases, { object })
   else
-    return function(cls)
-      return class_extends(cls or {}, bases)
-    end
+    error("invalid argument type for class: " .. type(a))
   end
 end
 
