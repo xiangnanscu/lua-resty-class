@@ -1,9 +1,100 @@
-local object       = require("resty.object")
 local table        = table
 local rawget       = rawget
 local type         = type
 local ipairs       = ipairs
 local setmetatable = setmetatable
+local pairs        = pairs
+local select       = select
+local string       = string
+local table_new, nkeys
+if ngx then
+  table_new = table.new
+  nkeys     = require "table.nkeys"
+else
+  table_new = function(narray, nhash)
+    return {}
+  end
+  nkeys = function(self)
+    local n = 0
+    for key, _ in pairs(self) do
+      n = n + 1
+    end
+    return n
+  end
+end
+
+local function object_call(t, ...)
+  local self = t:new()
+  self:init(...)
+  return self
+end
+
+local object
+object = setmetatable({
+  __call = object_call,
+  __name__ = 'object',
+  __index = object,
+  __bases__ = {},
+  __mro__ = { object },
+  __tostring = function(self)
+    return string.format('<instance %s>', rawget(self.__mro__[1], '__name__') or '?')
+  end,
+
+  new = function(cls)
+    return setmetatable({}, cls)
+  end,
+
+  init = function(self, ...)
+    return object.assign(self, ...)
+  end,
+
+  assign = function(self, ...)
+    for i = 1, select("#", ...) do
+      for k, v in pairs(select(i, ...)) do
+        self[k] = v
+      end
+    end
+    return self
+  end,
+
+  entries = function(self)
+    local res = setmetatable({}, object)
+    for k, v in pairs(self) do
+      res[#res + 1] = { k, v }
+    end
+    return res
+  end,
+
+  from_entries = function(arr)
+    local res = setmetatable({}, object)
+    for _, e in ipairs(arr) do
+      res[e[1]] = e[2]
+    end
+    return res
+  end,
+
+  keys = function(self)
+    local res = setmetatable(table_new(nkeys(self), 0), object)
+    for k, _ in pairs(self) do
+      res[#res + 1] = k
+    end
+    return res
+  end,
+
+  values = function(self)
+    local res = setmetatable(table_new(nkeys(self), 0), object)
+    for _, v in pairs(self) do
+      res[#res + 1] = v
+    end
+    return res
+  end,
+}, {
+  __call = object_call,
+  __tostring = function(cls)
+    return string.format('<class %s>', rawget(cls, '__name__') or '?')
+  end
+})
+
 
 local function inspect(C)
   local res = {}
@@ -20,20 +111,18 @@ local function merge(in_lists)
   for _, mro_list in ipairs(in_lists) do
     local head = mro_list[1]
     local has_head = false
-    for j, cmp_list in ipairs(in_lists) do
-      if cmp_list == mro_list then
-        goto continue
-      end
-      for k = 2, #cmp_list do
-        if head == cmp_list[k] then
-          has_head = true
+    for _, cmp_list in ipairs(in_lists) do
+      if cmp_list ~= mro_list then
+        for k = 2, #cmp_list do
+          if head == cmp_list[k] then
+            has_head = true
+            break
+          end
+        end
+        if has_head then
           break
         end
       end
-      if has_head then
-        break
-      end
-      ::continue::
     end
     if not has_head then
       local next_list = {}
@@ -142,6 +231,7 @@ local function mro_class(a)
 end
 
 local Class = setmetatable({
+  object = object,
   super = super,
   inspect = inspect
 }, {
