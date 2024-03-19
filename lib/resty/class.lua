@@ -5,7 +5,7 @@ local type         = type
 local ipairs       = ipairs
 local setmetatable = setmetatable
 
-local function pmro(C)
+local function inspect(C)
   local res = {}
   for i, e in ipairs(C.__mro__) do
     table.insert(res, e.__name__)
@@ -69,10 +69,18 @@ local function c3_mro(cls)
 end
 
 local function super(cls, self)
+  local mro = getmetatable(self).__mro__
+  -- find the index of cls in mro
+  local index
+  for i, e in ipairs(mro) do
+    if e == cls then
+      index = i
+    end
+  end
   return setmetatable({}, {
     __index = function(_, key)
-      for i = 2, #cls.__mro__ do
-        local func = rawget(cls.__mro__[i], key)
+      for i = index + 1, #mro do
+        local func = rawget(mro[i], key)
         if func ~= nil then
           return function(_, ...)
             return func(self, ...)
@@ -88,16 +96,14 @@ end
 ---@param cls table
 ---@return table
 local function class_extends(bases, cls)
+  cls.__name__ = cls.__name__ or tostring(cls)
   cls.__bases__ = { unpack(bases) }
   cls.__mro__ = c3_mro(cls)
   cls.__index = cls
   cls.__tostring = object.__tostring
   cls.__call = object.__call
-  cls.new = object.new
-  cls.init = object.init
-  function cls.super(self)
-    return super(cls, self)
-  end
+  cls.new = object.new -- ensure super's getmetatable work
+  cls.init = cls.init or object.init
 
   local meta = {
     __call = object.__call,
@@ -114,7 +120,7 @@ local function class_extends(bases, cls)
   return setmetatable(cls, meta)
 end
 
-local function class(a)
+local function mro_class(a)
   if a == nil then
     -- local A = Class()
     return class_extends({ object }, {})
@@ -127,14 +133,21 @@ local function class(a)
       -- local A = Class {foo = function(self) end}
       return class_extends({ object }, a)
     else
-      -- local C = Class {A, B} {foo = function(self) end}
-      return function(cls)
-        return class_extends(a, cls)
-      end
+      -- local C = Class {A, B}
+      return class_extends(a, {})
     end
   else
     error("invalid argument type for class: " .. type(a))
   end
 end
 
-return class
+local Class = setmetatable({
+  super = super,
+  inspect = inspect
+}, {
+  __call = function(t, ...)
+    return mro_class(...)
+  end
+})
+
+return Class
