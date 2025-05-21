@@ -219,11 +219,17 @@ local function mro_class(a)
     return class_extends({ object }, { __name__ = a })
   elseif type(a) == 'table' then
     if #a == 0 then
-      -- local A = Class {foo = function(self) end}
+      -- local A = Class {
+      --   foo = function(self) end
+      -- }
       return class_extends({ object }, a)
     else
-      -- local C = Class {A, B}
-      return class_extends(a, {})
+      -- local C = Class {A, B} {
+      --   foo = function(self) end
+      -- }
+      return function(cls)
+        return class_extends(a, cls)
+      end
     end
   else
     error("invalid argument type for class: " .. type(a))
