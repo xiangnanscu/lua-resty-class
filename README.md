@@ -13,11 +13,26 @@ opm get xiangnanscu/lua-resty-class
 ## making a class
 
 ```lua
-local A = Class() -- same as:
-local A = Class {}
-local A = Class 'A' -- same as:
-local A = Class { __name__ = 'A' }
-local C = Class {A, B} -- multiple inheritance like python
+local A = Class {
+  echoA = function(self)
+    print("echoA")
+  end
+}
+local B = Class {
+  echoB = function(self)
+    print("echoB")
+  end
+}
+-- multiple inheritance like python
+local C = Class {A, B} {
+  echoC = function(self)
+    print("echoC")
+  end
+}
+local c = C()
+c:echoA()
+c:echoB()
+c:echoC()
 ```
 
 ## Class.super(cls, self)
@@ -35,7 +50,7 @@ Print the mro chain of `cls`
 # Synopsis
 
 ```lua
-local Class = require("resty.class")
+local Class = require("lib.resty.class")
 
 local A = Class {
   __name__ = 'A',
@@ -44,8 +59,9 @@ local A = Class {
   end,
 }
 
-local B = Class { A }
-B.__name__ = 'B'
+local B = Class { A } {
+  __name__ = 'B',
+}
 function B:echo()
   Class.super(B, self):echo()
   print('call b.echo')
@@ -53,8 +69,9 @@ end
 
 Class.inspect(B)
 
-local C = Class { A }
-C.__name__ = 'C'
+local C = Class { A } {
+  __name__ = 'C',
+}
 function C:echo()
   Class.super(C, self):echo()
   print('call c.echo')
@@ -62,8 +79,9 @@ end
 
 Class.inspect(C)
 
-local D = Class { C, B }
-D.__name__ = 'D'
+local D = Class { C, B } {
+  __name__ = 'D',
+}
 function D:echo()
   Class.super(D, self):echo()
   print('call d.echo')
@@ -76,7 +94,6 @@ c:echo()
 print('------------')
 local d = D()
 d:echo()
-
 ```
 
 output:

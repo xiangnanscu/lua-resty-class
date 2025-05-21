@@ -214,9 +214,26 @@ local function mro_class(a)
     -- local A = Class()
     return class_extends({ object }, {})
   end
-  -- local A = Class 'A'
+  -- local A = Class 'A' {
+  --   foo = function(self) end
+  -- }
+  -- local C = Class 'C' { A, B } {
+  --   foo = function(self) end
+  -- }
   if type(a) == 'string' then
-    return class_extends({ object }, { __name__ = a })
+    return function(cls)
+      local callcc = mro_class(cls)
+      if type(callcc) == 'function' then
+        return function(defs)
+          local res = callcc(defs)
+          res.__name__ = a
+          return res
+        end
+      else
+        callcc.__name__ = a
+        return callcc
+      end
+    end
   elseif type(a) == 'table' then
     if #a == 0 then
       -- local A = Class {
